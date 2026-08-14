@@ -1,79 +1,84 @@
 # react-native-jsi-bridge-2
 
-React Native JSI library for communicate between js and native code via jsi skipping the react-native bridge which improve performance and skips data serialization/deserialization.
+React Native JSI 库，通过 JSI 实现 JS 与原生代码之间的通信。跳过 React Native Bridge，避免数据序列化/反序列化，性能更优。
 
-Based on [sergeymild/react-native-jsi-bridge](https://github.com/sergeymild/react-native-jsi-bridge), fixed build on RN 0.71.x and support bridging any JS types.
+基于 [sergeymild/react-native-jsi-bridge](https://github.com/sergeymild/react-native-jsi-bridge)，修复了 RN 0.71.x 的构建问题，并支持桥接任意 JS 类型。
 
-## Prerequisite
+> [English](./README-CN.md) | 简体中文
+
+## 前置要求
 
 react-native >= 0.73
 
-It you are using lower version of RN, please download package version 1.0.0
+如果使用更低版本的 RN，请下载 1.0.0 版本。
 
-## Installation
+## 安装
 
 ```sh
 yarn add react-native-jsi-bridge-2
-# and npx pod-install
+# 然后执行 npx pod-install
 ```
 
-## Usage JS
+## JS 端用法
 
-on js side just import `import { JsiBridge } from 'react-native-jsi-bridge-2'`
-and subscribe on events which will be fired from native code.
+在 JS 端，导入 `import { JsiBridge } from 'react-native-jsi-bridge-2'`，然后订阅原生代码发送的事件。
+
 ```typescript
 import { JsiBridge } from 'react-native-jsi-bridge-2';
 
-// for subscribe
+// 订阅事件
 JsiBridge.on('eventNameInJsCode', (data: any) => {
 
 })
 
-// for unsubscribe
+// 取消订阅
 JsiBridge.off('eventNameInJsCode')
 ```
 
-For send event to native code
+向原生代码发送事件：
+
 ```typescript
-// send event to native code
+// 向原生代码发送事件
 JsiBridge.emit('eventNameInNativeCode', { user: "your name" })
 ```
 
-## Usage Native Java
+## 原生 Java 端用法
 
-On native side (Java/Kotlin)
+在原生端（Java/Kotlin）：
+
 ```java
 
-// for subscribe
+// 订阅事件
 JsiBridge.on('eventNameInNativeCode', data -> {
 
 })
 
-// for unsubscribe
+// 取消订阅
 JsiBridge.off('eventNameInNativeCode')
 
-// send event to js code
+// 向 JS 代码发送事件
 JsiBridge.emit('eventNameInJsCode', data)
 ```
 
-## Usage Native Objective-c
+## 原生 Objective-C 端用法
 
-On native side
+在原生端：
+
 ```
 #import "JsiBridgeEmitter.h"
 
-// for subscribe
+// 订阅事件
 [[JsiBridgeEmitter shared] on:@"eventNameInNativeCode" with:^(id data) {
-  // some logic
+  // 处理逻辑
 }];
 
-// for unsubscribe
+// 取消订阅
 [[JsiBridgeEmitter shared] off:@"eventNameInNativeCode"];
 
-// send event to js code
+// 向 JS 代码发送事件
 [[JsiBridgeEmitter shared] emit:@"eventNameInJsCode" with:@"data"];
 ```
 
-## License
+## 许可证
 
 MIT
