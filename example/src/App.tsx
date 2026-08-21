@@ -1,14 +1,29 @@
 /* eslint-disable react-native/no-inline-styles */
 import * as React from 'react';
 import {
+  NativeModules,
+  Platform,
+  ScrollView,
   StyleSheet,
-  View,
   Text as RNText,
   TouchableOpacity,
   useColorScheme,
 } from 'react-native';
 import { JsiBridge } from 'react-native-jsi-bridge-2';
-const Text = ({ style, ...rest }: any) => {
+
+const isIOS = Platform.OS === 'ios';
+
+type ExampleJsiBridgeTestModule = {
+  emitNativeValue(value: unknown): void;
+  emitWebViewMessage(payload: unknown): void;
+  emitPreloadEvent(status: string): void;
+};
+
+const ExampleJsiBridgeTest = isIOS
+  ? (NativeModules.ExampleJsiBridgeTest as ExampleJsiBridgeTestModule)
+  : undefined;
+
+const Text = ({ style, ...rest }: React.ComponentProps<typeof RNText>) => {
   const isDark = useColorScheme() === 'dark';
 
   return (
@@ -16,15 +31,25 @@ const Text = ({ style, ...rest }: any) => {
   );
 };
 
-const Btn = ({ children, onPress }: any) => {
+const Btn = ({
+  children,
+  onPress,
+  disabled = false,
+}: {
+  children: React.ReactNode;
+  onPress: () => void;
+  disabled?: boolean;
+}) => {
   const isDark = useColorScheme() === 'dark';
   return (
     <TouchableOpacity
+      disabled={disabled}
       onPress={onPress}
       style={[
         styles.btn,
         {
           borderColor: isDark ? '#fff' : '#111',
+          opacity: disabled ? 0.45 : 1,
         },
       ]}
     >
@@ -33,108 +58,260 @@ const Btn = ({ children, onPress }: any) => {
   );
 };
 
-const rand = Math.random;
+type InstalledJsiBridge = {
+  registerCallback(name: string, callback: (data: unknown) => void): void;
+  removeCallback(name: string): void;
+  emit(name: string, data?: unknown): void;
+};
+
+function formatValue(value: unknown): string {
+  const type =
+    value === null
+      ? 'null'
+      : value === undefined
+      ? 'undefined'
+      : Array.isArray(value)
+      ? 'array'
+      : typeof value;
+
+  if (value === undefined) {
+    return `${type}: undefined`;
+  }
+
+  try {
+    const serialized = JSON.stringify(value);
+    return `${type}: ${serialized === undefined ? String(value) : serialized}`;
+  } catch {
+    return `${type}: ${String(value)}`;
+  }
+}
 
 export default function App() {
-  const [result, setResult] = React.useState<string | undefined>();
+  const [jsiStatus, setJsiStatus] = React.useState('检查中');
+  const [onDataResult, setOnDataResult] = React.useState('尚未收到 onData');
+  const [webviewMessage, setWebviewMessage] = React.useState(
+    '尚未收到 example.webview.message'
+  );
+  const [networkResponse, setNetworkResponse] = React.useState(
+    '尚未收到 example.webview.response'
+  );
+  const [preloadStatus, setPreloadStatus] = React.useState(
+    '尚未收到 example.preload.event'
+  );
 
   const isDark = useColorScheme() === 'dark';
+  const bridge = (
+    globalThis as typeof globalThis & { _JsiBridge?: InstalledJsiBridge }
+  )._JsiBridge;
+  const hasValidBridge = Boolean(
+    bridge &&
+      typeof bridge.registerCallback === 'function' &&
+      typeof bridge.removeCallback === 'function' &&
+      typeof bridge.emit === 'function'
+  );
 
+  const nativeHarnessReady = isIOS && Boolean(ExampleJsiBridgeTest) && hasValidBridge;
   React.useEffect(() => {
-    JsiBridge.on('onData', (data: any) => {
-      console.log('[App.onData]', typeof data, data);
-      try {
-        setResult(JSON.stringify(data));
-      } catch (_) {
-        setResult(String(data));
+    let mounted = true;
+
+    setJsiStatus(
+      hasValidBridge
+        ? '已安装：global._JsiBridge 及三个函数均正常'
+        : '未安装或函数类型不正确，未注册任何监听器'
+    );
+    if (!hasValidBridge) {
+      return () => {
+        mounted = false;
+      };
+    }
+
+    JsiBridge.on('onData', (data: unknown) => {
+      if (mounted) {
+        setOnDataResult(formatValue(data));
+      }
+    });
+    JsiBridge.on('example.webview.message', (data: unknown) => {
+      if (mounted) {
+        setWebviewMessage(formatValue(data));
+      }
+    });
+    JsiBridge.on('example.webview.response', (data: unknown) => {
+      if (mounted) {
+        setNetworkResponse(formatValue(data));
+      }
+    });
+    JsiBridge.on('example.preload.event', (data: unknown) => {
+      if (mounted) {
+        setPreloadStatus(formatValue(data));
       }
     });
 
     return () => {
+      mounted = false;
       JsiBridge.off('onData');
+      JsiBridge.off('example.webview.message');
+      JsiBridge.off('example.webview.response');
+      JsiBridge.off('example.preload.event');
     };
   }, []);
 
-  return (
-    <View
-      style={[
-        styles.container,
-        {
-          backgroundColor: isDark ? '#111' : '#fff',
-        },
-      ]}
-    >
-      <Text
-        style={{
-          marginBottom: 24,
-          fontSize: 20,
-          padding: 24,
-          color: isDark ? '#fff' : '#111',
-        }}
-      >
-        Result: {String(result)}
-      </Text>
+  const sendJsData = (value: unknown) => JsiBridge.emit('jsData', value);
 
+  return (
+    <ScrollView
+      contentContainerStyle={styles.container}
+      style={{ backgroundColor: isDark ? '#111' : '#fff' }}
+    >
+      <Text style={styles.title}>JsiBridge Example 调试页（iOS-only harness）</Text>
+      <Text style={styles.result}>
+        {isIOS
+          ? ExampleJsiBridgeTest
+            ? 'iOS native test module ready'
+            : 'iOS native test module unavailable'
+          : 'Android：iOS native test controls disabled'}
+      </Text>
+      <Text style={styles.sectionTitle}>1. JSI 安装状态</Text>
+      <Text style={styles.result}>{jsiStatus}</Text>
+
+      <Text style={styles.sectionTitle}>2. JS → Native → JS（jsData）</Text>
+      <Text style={styles.result}>{onDataResult}</Text>
       <Btn
-        onPress={() =>
-          JsiBridge.emit(
-            'jsData',
-            Array.from({ length: Math.ceil(rand() * 20) }).map(() =>
-              (rand() * 100).toPrecision(2)
-            )
-          )
-        }
+        disabled={!hasValidBridge}
+        onPress={() => sendJsData('example string')}
       >
-        <Text>Send event with Array</Text>
+        发送 string
+      </Btn>
+      <Btn disabled={!hasValidBridge} onPress={() => sendJsData(42.5)}>
+        发送 number
+      </Btn>
+      <Btn disabled={!hasValidBridge} onPress={() => sendJsData(true)}>
+        发送 boolean
+      </Btn>
+      <Btn
+        disabled={!hasValidBridge}
+        onPress={() => sendJsData({ user: 'example', value: 1 })}
+      >
+        发送 object
+      </Btn>
+      <Btn
+        disabled={!hasValidBridge}
+        onPress={() => sendJsData(['example', 1, false])}
+      >
+        发送 array
+      </Btn>
+      <Btn disabled={!hasValidBridge} onPress={() => sendJsData(null)}>
+        发送 null
+      </Btn>
+      <Btn
+        disabled={!hasValidBridge}
+        onPress={() => JsiBridge.emit('jsData', undefined)}
+      >
+        发送 undefined
       </Btn>
 
+      <Text style={styles.sectionTitle}>3. Native → JS（onData）</Text>
       <Btn
+        disabled={!nativeHarnessReady}
+        onPress={() => ExampleJsiBridgeTest?.emitNativeValue('native string')}
+      >
+        Native 发送 string
+      </Btn>
+      <Btn
+        disabled={!nativeHarnessReady}
+        onPress={() => ExampleJsiBridgeTest?.emitNativeValue({ from: 'native' })}
+      >
+        Native 发送 object
+      </Btn>
+      <Btn
+        disabled={!nativeHarnessReady}
+        onPress={() => ExampleJsiBridgeTest?.emitNativeValue(null)}
+      >
+        Native 发送 null
+      </Btn>
+
+      <Text style={styles.sectionTitle}>4. iNCU-like 事件模拟（iOS harness）</Text>
+      <Btn
+        disabled={!nativeHarnessReady}
         onPress={() =>
-          JsiBridge.emit('jsData', {
-            user: 'sxy',
-            val: rand().toPrecision(2),
+          ExampleJsiBridgeTest?.emitWebViewMessage({
+            source: 'native',
+            data: 'WebView onMessage equivalent',
           })
         }
       >
-        <Text>Send event with Object</Text>
+        Native 触发 WebView message
+      </Btn>
+      <Text style={styles.result}>{webviewMessage}</Text>
+
+      <Btn
+        disabled={!nativeHarnessReady}
+        onPress={() =>
+          JsiBridge.emit('example.webview.injectJavaScript', {
+            javascript: 'document.title',
+            source: 'example debug page',
+          })
+        }
+      >
+        JS 发送 injectJavaScript
       </Btn>
 
       <Btn
-        onPress={() => JsiBridge.emit('jsData', 'sxy' + rand().toPrecision(1))}
+        disabled={!nativeHarnessReady}
+        onPress={() =>
+          JsiBridge.emit('example.webview.network', {
+            taskId: `example-${Date.now()}`,
+            url: 'https://example.invalid/data',
+            method: 'GET',
+            data: { request: 'example' },
+            headers: { Accept: 'application/json' },
+          })
+        }
       >
-        <Text>Send event with String</Text>
+        JS 发送 network 请求
       </Btn>
+      <Text style={styles.result}>{networkResponse}</Text>
 
-      <Btn onPress={() => JsiBridge.emit('jsData', rand() > 0.5)}>
-        <Text>Send event with boolean</Text>
+      <Btn
+        disabled={!nativeHarnessReady}
+        onPress={() => ExampleJsiBridgeTest?.emitPreloadEvent('finish')}
+      >
+        Native 触发 preload finish
       </Btn>
-
-      <Btn onPress={() => JsiBridge.emit('jsData', rand() * 10)}>
-        <Text>Send event with random number</Text>
+      <Btn
+        disabled={!nativeHarnessReady}
+        onPress={() => ExampleJsiBridgeTest?.emitPreloadEvent('error')}
+      >
+        Native 触发 preload error
       </Btn>
-
-      <Btn onPress={() => JsiBridge.emit('jsData')}>
-        <Text>Send event with undefined</Text>
-      </Btn>
-    </View>
+      <Text style={styles.result}>{preloadStatus}</Text>
+    </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: 'stretch',
+    padding: 20,
   },
-  box: {
-    width: 60,
-    height: 60,
-    marginVertical: 20,
+  title: {
+    fontSize: 22,
+    fontWeight: '600',
+    marginBottom: 16,
+    textAlign: 'center',
+  },
+  sectionTitle: {
+    fontSize: 17,
+    fontWeight: '600',
+    marginTop: 16,
+    marginBottom: 4,
+  },
+  result: {
+    marginBottom: 8,
   },
   btn: {
     padding: 12,
     borderRadius: 8,
     borderWidth: 1,
-    margin: 8,
+    marginVertical: 4,
   },
 });
