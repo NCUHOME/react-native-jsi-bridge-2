@@ -7,6 +7,7 @@
 //
 
 #import "JsiBridgeEmitter.h"
+#import "_JsiBridge.h"
 
 @implementation JsiBridgeEmitter
 

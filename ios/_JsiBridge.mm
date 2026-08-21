@@ -1,4 +1,10 @@
 #import "_JsiBridge.h"
+#if defined(RCT_NEW_ARCH_ENABLED) && RCT_NEW_ARCH_ENABLED
+#import <React/RCTCallInvoker.h>
+#import <React/RCTCallInvokerModule.h>
+#import <ReactCommon/RCTTurboModuleWithJSIBindings.h>
+#import "RNJsiBridgeSpec.h"
+#endif
 #import <React/RCTBridge+Private.h>
 #import <ReactCommon/RCTTurboModule.h>
 #import <jsi/jsi.h>
@@ -16,7 +22,14 @@ jsi::Runtime *currentRuntime_ = nullptr;
 std::shared_ptr<react::CallInvoker> currentCallInvoker_;
 }
 
+#if defined(RCT_NEW_ARCH_ENABLED) && RCT_NEW_ARCH_ENABLED
+@interface JsiBridge () <NativeJsiBridgeSpec, RCTTurboModuleWithJSIBindings, RCTCallInvokerModule>
+@end
+#endif
 @implementation JsiBridge
+#if defined(RCT_NEW_ARCH_ENABLED) && RCT_NEW_ARCH_ENABLED
+@synthesize callInvoker = _callInvoker;
+#endif
 
 RCT_EXPORT_MODULE()
 

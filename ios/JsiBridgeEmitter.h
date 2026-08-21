@@ -7,7 +7,7 @@
 //
 
 #import <Foundation/Foundation.h>
-#import "_JsiBridge.h"
+@class JsiBridge;
 
 typedef void (^JsiBridgeCallback)(id data);
 

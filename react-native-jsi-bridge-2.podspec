@@ -14,7 +14,7 @@ Pod::Spec.new do |s|
   s.source       = { :git => "https://github.com/ncuhome/react-native-jsi-bridge-2.git", :tag => "#{s.version}" }
 
   s.source_files = "ios/**/*.{h,m,mm,cpp}"
-  s.public_header_files = "ios/**/*.h"
+  s.public_header_files = "ios/JsiBridgeEmitter.h"
 
   if respond_to?(:install_modules_dependencies, true)
     install_modules_dependencies(s)
