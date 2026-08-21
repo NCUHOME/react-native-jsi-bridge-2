@@ -99,6 +99,28 @@ android {
       "**/libturbomodulejsijni.so"
     ]
   }
+  sourceSets {
+    main {
+      if (isNewArchitectureEnabled()) {
+        java.srcDirs += [
+          "src/newarch",
+          "generated/java",
+          "generated/jni"
+        ]
+      } else {
+        java.srcDirs += ["src/oldarch"]
+      }
+    }
+  }
+
+}
+
+if (isNewArchitectureEnabled()) {
+  react {
+    jsRootDir = file("../src/")
+    libraryName = "JsiBridge"
+    codegenJavaPackageName = "com.reactnativejsibridge"
+  }
 }
 
 dependencies {

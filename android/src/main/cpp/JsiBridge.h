@@ -4,8 +4,8 @@
 #include <fbjni/fbjni.h>
 #include <jsi/jsi.h>
 #include <jsi/JSIDynamic.h>
+#include <ReactCommon/BindingsInstallerHolder.h>
 #include <ReactCommon/CallInvokerHolder.h>
-#include <react/jni/CxxModuleWrapper.h>
 #include <react/jni/JMessageQueueThread.h>
 #include <react/jni/WritableNativeMap.h>
 #include <map>
@@ -23,6 +23,8 @@ public:
     static void registerNatives();
 
     void installJSIBindings();
+    facebook::jni::local_ref<facebook::react::BindingsInstallerHolder::javaobject>
+    getBindingsInstaller();
 
     void emitJsStr(jstring name, jstring data);
 

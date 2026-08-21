@@ -36,6 +36,8 @@ void JsiBridge::registerNatives() {
                                             JsiBridge::emitJsObj),
                            makeNativeMethod("emitJsNull",
                                             JsiBridge::emitJsNull),
+                           makeNativeMethod("getBindingsInstaller",
+                                            JsiBridge::getBindingsInstaller),
                    });
 }
 
@@ -130,7 +132,7 @@ void JsiBridge::emitJsNull(jstring name) {
 
     if (jsListeners_.find(stdName) != jsListeners_.end()) {
         jsCallInvoker_->invokeAsync([=]() {
-            jsListeners_[stdName]->call(*runtime_, jsi::Value::undefined());
+            jsListeners_[stdName]->call(*runtime_, jsi::Value::null());
         });
     }
 }
@@ -156,6 +158,15 @@ static jni::local_ref<jobject> JSIValueToJavaObject(jsi::Runtime &rt,
     }
     throw std::runtime_error("Unsupported jsi::Value kind");
 }
+facebook::jni::local_ref<facebook::react::BindingsInstallerHolder::javaobject>
+JsiBridge::getBindingsInstaller() {
+    return facebook::react::BindingsInstallerHolder::newObjectCxxArgs(
+            [this](jsi::Runtime &runtime) {
+                runtime_ = &runtime;
+                installJSIBindings();
+            });
+}
+
 
 
 void JsiBridge::installJSIBindings() {

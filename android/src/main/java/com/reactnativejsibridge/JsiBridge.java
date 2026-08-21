@@ -12,8 +12,8 @@ import com.facebook.react.bridge.ReactApplicationContext;
 import com.facebook.react.bridge.ReadableNativeArray;
 import com.facebook.react.bridge.ReadableNativeMap;
 import com.facebook.react.turbomodule.core.CallInvokerHolderImpl;
+import com.facebook.react.turbomodule.core.interfaces.BindingsInstallerHolder;
 import com.facebook.react.turbomodule.core.interfaces.CallInvokerHolder;
-
 @SuppressWarnings("JavaJniMissingFunction")
 public class JsiBridge {
     public static final JsiBridge instance = new JsiBridge();
@@ -64,6 +64,17 @@ public class JsiBridge {
         }
     }
 
+    public BindingsInstallerHolder getBindingsInstaller(CallInvokerHolder callInvokerHolder) {
+        try {
+            if (mHybridData == null) {
+                mHybridData = initHybrid(0, (CallInvokerHolderImpl) callInvokerHolder);
+            }
+            return getBindingsInstaller();
+        } catch (Exception exception) {
+            throw new IllegalStateException("Failed to create JSI bindings installer", exception);
+        }
+    }
+
     @DoNotStrip
     @SuppressWarnings("unused")
     private void emitNative(final String name, final Object data) {
@@ -83,6 +94,9 @@ public class JsiBridge {
 
     private native void emitJsBool(String name, boolean data);
 
+
+    @DoNotStrip
+    private native BindingsInstallerHolder getBindingsInstaller();
     private native void emitJsNum(String name, double data);
 
     private native void emitJsObj(String name, Object data, boolean isArray);

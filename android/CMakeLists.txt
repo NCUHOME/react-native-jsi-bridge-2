@@ -22,12 +22,9 @@ message(WARNING "jsiBridge linking")
 
 target_link_libraries(
     ${PACKAGE_NAME}
-    ReactAndroid::jsi # jsi/
-    ReactAndroid::react_nativemodule_core # ReactCommon/
-    ReactAndroid::turbomodulejsijni # ReactCommon/
-    ReactAndroid::folly_runtime # folly/
-    ReactAndroid::reactnativejni # cxxreact/
-    fbjni::fbjni # fbjni/
+    ReactAndroid::jsi
+    ReactAndroid::reactnative
+    fbjni::fbjni
     log
     android
 )

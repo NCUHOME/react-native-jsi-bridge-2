@@ -1,16 +1,16 @@
 package com.reactnativejsibridge;
 
-import android.util.Log;
-
 import androidx.annotation.NonNull;
 
+import com.facebook.react.bridge.Promise;
 import com.facebook.react.bridge.ReactApplicationContext;
-import com.facebook.react.bridge.ReactContextBaseJavaModule;
-import com.facebook.react.bridge.ReactMethod;
 import com.facebook.react.module.annotations.ReactModule;
+import com.facebook.react.turbomodule.core.interfaces.BindingsInstallerHolder;
+import com.facebook.react.turbomodule.core.interfaces.CallInvokerHolder;
+import com.facebook.react.turbomodule.core.interfaces.TurboModuleWithJSIBindings;
 
 @ReactModule(name = JsiBridgeModule.NAME)
-public class JsiBridgeModule extends ReactContextBaseJavaModule {
+public class JsiBridgeModule extends JsiBridgeSpec implements TurboModuleWithJSIBindings {
     public static final String NAME = "JsiBridge";
 
     public JsiBridgeModule(ReactApplicationContext reactContext) {
@@ -23,16 +23,15 @@ public class JsiBridgeModule extends ReactContextBaseJavaModule {
         return NAME;
     }
 
-
-    // Example method
-    // See https://reactnative.dev/docs/native-modules-android
-    @ReactMethod(isBlockingSynchronousMethod = true)
-    public void install() {
-        try {
-            System.loadLibrary("jsiBridge");
-            JsiBridge.instance.install(getReactApplicationContext());
-        } catch (Exception exception) {
-            Log.e(NAME, "Failed to install JSI Bindings!", exception);
-        }
+    @Override
+    @com.facebook.proguard.annotations.DoNotStrip
+    public BindingsInstallerHolder getBindingsInstaller() {
+        System.loadLibrary("jsiBridge");
+        CallInvokerHolder callInvokerHolder = getReactApplicationContext().getJSCallInvokerHolder();
+        return JsiBridge.instance.getBindingsInstaller(callInvokerHolder);
+    }
+    @Override
+    public void getStatus(Promise promise) {
+        promise.resolve("newarch");
     }
 }
