@@ -10,17 +10,24 @@ import {
   TurboModuleRegistry,
   useColorScheme,
 } from 'react-native';
+import type { TurboModule } from 'react-native';
 import { JsiBridge } from 'react-native-jsi-bridge-2';
 
 const isIOS = Platform.OS === 'ios';
 
-type ExampleJsiBridgeTestModule = {
-  emitNativeValue(value: unknown): void;
-  emitWebViewMessage(payload: unknown): void;
-  emitPreloadEvent(status: string): void;
+type ExampleJsiBridgeTestModule = TurboModule & {
+  emitNativeValue?: (value: unknown) => void;
+  emitNativeString?: (value: string) => void;
+  emitNativeNumber?: (value: number) => void;
+  emitNativeBoolean?: (value: boolean) => void;
+  emitNativeObject?: (value: object) => void;
+  emitNativeArray?: (value: unknown[]) => void;
+  emitNativeNull?: () => void;
+  emitWebViewMessage?: (payload: object) => void;
+  emitPreloadEvent?: (status: string) => void;
 };
 
-const ExampleJsiBridgeTest = isIOS
+const iosExampleJsiBridgeTest = isIOS
   ? (NativeModules.ExampleJsiBridgeTest as ExampleJsiBridgeTestModule)
   : undefined;
 
@@ -64,7 +71,7 @@ type InstalledJsiBridge = {
   removeCallback(name: string): void;
   emit(name: string, data?: unknown): void;
 };
-type NativeJsiBridgeModule = {
+type NativeJsiBridgeModule = TurboModule & {
   getStatus?: () => Promise<string>;
   install?: () => unknown;
 };
@@ -91,6 +98,14 @@ function formatValue(value: unknown): string {
   }
 }
 
+function emitNativeValue(value: unknown) {
+  if (isIOS) {
+    iosExampleJsiBridgeTest?.emitNativeValue?.(value);
+    return;
+  }
+  JsiBridge.emit('jsData', value);
+}
+
 export default function App() {
   const [jsiStatus, setJsiStatus] = React.useState('检查中');
   const [nativeModuleStatus, setNativeModuleStatus] = React.useState('检查中');
@@ -106,6 +121,7 @@ export default function App() {
   );
 
   const isDark = useColorScheme() === 'dark';
+  const exampleJsiBridgeTest = iosExampleJsiBridgeTest;
   const bridge = (
     globalThis as typeof globalThis & { _JsiBridge?: InstalledJsiBridge }
   )._JsiBridge;
@@ -121,7 +137,7 @@ export default function App() {
       .__turboModuleProxy
   );
 
-  const nativeHarnessReady = isIOS && Boolean(ExampleJsiBridgeTest) && hasValidBridge;
+  const nativeHarnessReady = hasValidBridge && (!isIOS || Boolean(exampleJsiBridgeTest));
   React.useEffect(() => {
     let mounted = true;
     console.log('[ExampleJsiBridgeTest] diagnostics', {
@@ -195,13 +211,11 @@ export default function App() {
       contentContainerStyle={styles.container}
       style={{ backgroundColor: isDark ? '#111' : '#fff' }}
     >
-      <Text style={styles.title}>JsiBridge Example 调试页（iOS-only harness）</Text>
+      <Text style={styles.title}>JsiBridge Example 调试页（Android/iOS harness）</Text>
       <Text style={styles.result}>
-        {isIOS
-          ? ExampleJsiBridgeTest
-            ? 'iOS native test module ready'
-            : 'iOS native test module unavailable'
-          : 'Android：iOS native test controls disabled'}
+        {nativeHarnessReady
+          ? `${isIOS ? 'iOS' : 'Android'} native test module ready`
+          : `${isIOS ? 'iOS' : 'Android'} native test module unavailable`}
       </Text>
       <Text style={styles.sectionTitle}>1. JSI 安装状态</Text>
       <Text style={styles.result}>{jsiStatus}</Text>
@@ -246,32 +260,58 @@ export default function App() {
       <Text style={styles.sectionTitle}>3. Native → JS（onData）</Text>
       <Btn
         disabled={!nativeHarnessReady}
-        onPress={() => ExampleJsiBridgeTest?.emitNativeValue('native string')}
+        onPress={() => emitNativeValue('native string')}
       >
         Native 发送 string
       </Btn>
       <Btn
         disabled={!nativeHarnessReady}
-        onPress={() => ExampleJsiBridgeTest?.emitNativeValue({ from: 'native' })}
+        onPress={() => emitNativeValue(42.5)}
+      >
+        Native 发送 number
+      </Btn>
+      <Btn
+        disabled={!nativeHarnessReady}
+        onPress={() => emitNativeValue(true)}
+      >
+        Native 发送 boolean
+      </Btn>
+      <Btn
+        disabled={!nativeHarnessReady}
+        onPress={() => emitNativeValue({ from: 'native' })}
       >
         Native 发送 object
       </Btn>
       <Btn
         disabled={!nativeHarnessReady}
-        onPress={() => ExampleJsiBridgeTest?.emitNativeValue(null)}
+        onPress={() => emitNativeValue(['native', 1, false])}
+      >
+        Native 发送 array
+      </Btn>
+      <Btn
+        disabled={!nativeHarnessReady}
+        onPress={() => emitNativeValue(null)}
       >
         Native 发送 null
       </Btn>
 
-      <Text style={styles.sectionTitle}>4. iNCU-like 事件模拟（iOS harness）</Text>
+      <Text style={styles.sectionTitle}>4. iNCU-like 事件模拟</Text>
       <Btn
         disabled={!nativeHarnessReady}
-        onPress={() =>
-          ExampleJsiBridgeTest?.emitWebViewMessage({
+        onPress={() => {
+          const payload = {
             source: 'native',
             data: 'WebView onMessage equivalent',
-          })
-        }
+          };
+          if (isIOS) {
+            exampleJsiBridgeTest?.emitWebViewMessage?.(payload);
+          } else {
+            JsiBridge.emit('jsData', {
+              __debugEvent: 'example.webview.message',
+              __payload: payload,
+            });
+          }
+        }}
       >
         Native 触发 WebView message
       </Btn>
@@ -307,13 +347,31 @@ export default function App() {
 
       <Btn
         disabled={!nativeHarnessReady}
-        onPress={() => ExampleJsiBridgeTest?.emitPreloadEvent('finish')}
+        onPress={() => {
+          if (isIOS) {
+            exampleJsiBridgeTest?.emitPreloadEvent?.('finish');
+          } else {
+            JsiBridge.emit('jsData', {
+              __debugEvent: 'example.preload.event',
+              __payload: 'finish',
+            });
+          }
+        }}
       >
         Native 触发 preload finish
       </Btn>
       <Btn
         disabled={!nativeHarnessReady}
-        onPress={() => ExampleJsiBridgeTest?.emitPreloadEvent('error')}
+        onPress={() => {
+          if (isIOS) {
+            exampleJsiBridgeTest?.emitPreloadEvent?.('error');
+          } else {
+            JsiBridge.emit('jsData', {
+              __debugEvent: 'example.preload.event',
+              __payload: 'error',
+            });
+          }
+        }}
       >
         Native 触发 preload error
       </Btn>

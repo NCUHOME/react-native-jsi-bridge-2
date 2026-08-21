@@ -93,6 +93,7 @@ android {
       "**/libfbjni.so",
        "**/libjsi.so",
       "**/libreactnativejni.so",
+      "**/libreactnative.so",
       "**/libfolly_json.so",
       "**/libfolly_runtime.so",
       "**/libreact_nativemodule_core.so",
