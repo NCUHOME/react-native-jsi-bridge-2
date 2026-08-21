@@ -7,6 +7,7 @@ import {
   StyleSheet,
   Text as RNText,
   TouchableOpacity,
+  TurboModuleRegistry,
   useColorScheme,
 } from 'react-native';
 import { JsiBridge } from 'react-native-jsi-bridge-2';
@@ -63,6 +64,10 @@ type InstalledJsiBridge = {
   removeCallback(name: string): void;
   emit(name: string, data?: unknown): void;
 };
+type NativeJsiBridgeModule = {
+  getStatus?: () => Promise<string>;
+  install?: () => unknown;
+};
 
 function formatValue(value: unknown): string {
   const type =
@@ -88,6 +93,7 @@ function formatValue(value: unknown): string {
 
 export default function App() {
   const [jsiStatus, setJsiStatus] = React.useState('检查中');
+  const [nativeModuleStatus, setNativeModuleStatus] = React.useState('检查中');
   const [onDataResult, setOnDataResult] = React.useState('尚未收到 onData');
   const [webviewMessage, setWebviewMessage] = React.useState(
     '尚未收到 example.webview.message'
@@ -109,10 +115,37 @@ export default function App() {
       typeof bridge.removeCallback === 'function' &&
       typeof bridge.emit === 'function'
   );
+  const nativeJsiBridge = TurboModuleRegistry.get<NativeJsiBridgeModule>('JsiBridge');
+  const hasTurboModuleProxy = Boolean(
+    (globalThis as typeof globalThis & { __turboModuleProxy?: object })
+      .__turboModuleProxy
+  );
 
   const nativeHarnessReady = isIOS && Boolean(ExampleJsiBridgeTest) && hasValidBridge;
   React.useEffect(() => {
     let mounted = true;
+    console.log('[ExampleJsiBridgeTest] diagnostics', {
+      nativeModule: Boolean(nativeJsiBridge),
+      turboModuleProxy: hasTurboModuleProxy,
+      globalBridge: Boolean(bridge),
+      validBridge: hasValidBridge,
+    });
+    setNativeModuleStatus(
+      nativeJsiBridge
+        ? `TurboModuleRegistry.get('JsiBridge') 已注册；TurboModuleProxy=${hasTurboModuleProxy}`
+        : `TurboModuleRegistry.get('JsiBridge') 未注册；TurboModuleProxy=${hasTurboModuleProxy}`
+    );
+    nativeJsiBridge?.getStatus?.()
+      .then(status => {
+        if (mounted) {
+          setNativeModuleStatus(`JsiBridge.getStatus()=${status}`);
+        }
+      })
+      .catch(error => {
+        if (mounted) {
+          setNativeModuleStatus(`getStatus 失败：${String(error)}`);
+        }
+      });
 
     setJsiStatus(
       hasValidBridge
@@ -172,6 +205,7 @@ export default function App() {
       </Text>
       <Text style={styles.sectionTitle}>1. JSI 安装状态</Text>
       <Text style={styles.result}>{jsiStatus}</Text>
+      <Text style={styles.result}>{nativeModuleStatus}</Text>
 
       <Text style={styles.sectionTitle}>2. JS → Native → JS（jsData）</Text>
       <Text style={styles.result}>{onDataResult}</Text>

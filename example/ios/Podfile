@@ -5,8 +5,8 @@ require Pod::Executable.execute_command('node', ['-p',
   )', __dir__]).strip
 
 platform :ios, min_ios_version_supported
+ENV['RCT_NEW_ARCH_ENABLED'] = '1'
 prepare_react_native_project!
-
 
 linkage = ENV['USE_FRAMEWORKS']
 if linkage != nil
@@ -34,10 +34,15 @@ target 'JsiBridge2Example' do
       :mac_catalyst_enabled => false
     )
     installer.pods_project.targets.each do |target|
-      next unless target.name == "fmt"
+      next unless target.name == "fmt" || target.name == "react-native-jsi-bridge-2"
 
       target.build_configurations.each do |config|
-        config.build_settings["CLANG_CXX_LANGUAGE_STANDARD"] = "c++17"
+        if target.name == "fmt"
+          config.build_settings["CLANG_CXX_LANGUAGE_STANDARD"] = "c++17"
+        else
+          config.build_settings["GCC_PREPROCESSOR_DEFINITIONS"] = "$(inherited) RCT_NEW_ARCH_ENABLED=1"
+          config.build_settings["OTHER_CPLUSPLUSFLAGS"] = "$(inherited) -DRCT_NEW_ARCH_ENABLED=1"
+        end
       end
     end
 end
