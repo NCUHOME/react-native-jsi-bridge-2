@@ -81,10 +81,10 @@ function formatValue(value: unknown): string {
     value === null
       ? 'null'
       : value === undefined
-      ? 'undefined'
-      : Array.isArray(value)
-      ? 'array'
-      : typeof value;
+        ? 'undefined'
+        : Array.isArray(value)
+          ? 'array'
+          : typeof value;
 
   if (value === undefined) {
     return `${type}: undefined`;
@@ -131,13 +131,15 @@ export default function App() {
       typeof bridge.removeCallback === 'function' &&
       typeof bridge.emit === 'function'
   );
-  const nativeJsiBridge = TurboModuleRegistry.get<NativeJsiBridgeModule>('JsiBridge');
+  const nativeJsiBridge =
+    TurboModuleRegistry.get<NativeJsiBridgeModule>('JsiBridge');
   const hasTurboModuleProxy = Boolean(
     (globalThis as typeof globalThis & { __turboModuleProxy?: object })
       .__turboModuleProxy
   );
 
-  const nativeHarnessReady = hasValidBridge && (!isIOS || Boolean(exampleJsiBridgeTest));
+  const nativeHarnessReady =
+    hasValidBridge && (!isIOS || Boolean(exampleJsiBridgeTest));
   React.useEffect(() => {
     let mounted = true;
     console.log('[ExampleJsiBridgeTest] diagnostics', {
@@ -151,13 +153,14 @@ export default function App() {
         ? `TurboModuleRegistry.get('JsiBridge') 已注册；TurboModuleProxy=${hasTurboModuleProxy}`
         : `TurboModuleRegistry.get('JsiBridge') 未注册；TurboModuleProxy=${hasTurboModuleProxy}`
     );
-    nativeJsiBridge?.getStatus?.()
-      .then(status => {
+    nativeJsiBridge
+      ?.getStatus?.()
+      .then((status) => {
         if (mounted) {
           setNativeModuleStatus(`JsiBridge.getStatus()=${status}`);
         }
       })
-      .catch(error => {
+      .catch((error) => {
         if (mounted) {
           setNativeModuleStatus(`getStatus 失败：${String(error)}`);
         }
@@ -202,7 +205,7 @@ export default function App() {
       JsiBridge.off('example.webview.response');
       JsiBridge.off('example.preload.event');
     };
-  }, []);
+  }, [bridge, hasTurboModuleProxy, hasValidBridge, nativeJsiBridge]);
 
   const sendJsData = (value: unknown) => JsiBridge.emit('jsData', value);
 
@@ -211,7 +214,9 @@ export default function App() {
       contentContainerStyle={styles.container}
       style={{ backgroundColor: isDark ? '#111' : '#fff' }}
     >
-      <Text style={styles.title}>JsiBridge Example 调试页（Android/iOS harness）</Text>
+      <Text style={styles.title}>
+        JsiBridge Example 调试页（Android/iOS harness）
+      </Text>
       <Text style={styles.result}>
         {nativeHarnessReady
           ? `${isIOS ? 'iOS' : 'Android'} native test module ready`
@@ -264,16 +269,10 @@ export default function App() {
       >
         Native 发送 string
       </Btn>
-      <Btn
-        disabled={!nativeHarnessReady}
-        onPress={() => emitNativeValue(42.5)}
-      >
+      <Btn disabled={!nativeHarnessReady} onPress={() => emitNativeValue(42.5)}>
         Native 发送 number
       </Btn>
-      <Btn
-        disabled={!nativeHarnessReady}
-        onPress={() => emitNativeValue(true)}
-      >
+      <Btn disabled={!nativeHarnessReady} onPress={() => emitNativeValue(true)}>
         Native 发送 boolean
       </Btn>
       <Btn
@@ -288,10 +287,7 @@ export default function App() {
       >
         Native 发送 array
       </Btn>
-      <Btn
-        disabled={!nativeHarnessReady}
-        onPress={() => emitNativeValue(null)}
-      >
+      <Btn disabled={!nativeHarnessReady} onPress={() => emitNativeValue(null)}>
         Native 发送 null
       </Btn>
 
