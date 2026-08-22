@@ -4,6 +4,7 @@ import androidx.annotation.NonNull;
 
 import com.facebook.react.bridge.Promise;
 import com.facebook.react.bridge.ReactApplicationContext;
+import com.facebook.react.bridge.ReactMethod;
 import com.facebook.react.module.annotations.ReactModule;
 import com.facebook.react.turbomodule.core.interfaces.BindingsInstallerHolder;
 import com.facebook.react.turbomodule.core.interfaces.CallInvokerHolder;
@@ -30,8 +31,17 @@ public class JsiBridgeModule extends JsiBridgeSpec implements TurboModuleWithJSI
         CallInvokerHolder callInvokerHolder = getReactApplicationContext().getJSCallInvokerHolder();
         return JsiBridge.instance.getBindingsInstaller(callInvokerHolder);
     }
+    @ReactMethod(isBlockingSynchronousMethod = true)
+    public void install() {
+        if (!BuildConfig.IS_NEW_ARCHITECTURE_ENABLED) {
+            System.loadLibrary("jsiBridge");
+            JsiBridge.instance.install(getReactApplicationContext());
+        }
+    }
+
     @Override
+    @ReactMethod
     public void getStatus(Promise promise) {
-        promise.resolve("newarch");
+        promise.resolve(BuildConfig.IS_NEW_ARCHITECTURE_ENABLED ? "newarch" : "legacy");
     }
 }
