@@ -34,12 +34,31 @@ std::shared_ptr<react::CallInvoker> currentCallInvoker_;
 RCT_EXPORT_MODULE()
 
 - (void)installJSIBindingsWithRuntime:(jsi::Runtime &)runtime
+                          callInvoker:(const std::shared_ptr<react::CallInvoker> &)callInvoker
 {
     currentRuntime_ = &runtime;
-    #if defined(RCT_NEW_ARCH_ENABLED) && RCT_NEW_ARCH_ENABLED
-    currentCallInvoker_ = self.callInvoker.callInvoker;
-    #endif
+    currentCallInvoker_ = callInvoker;
 
+    [self installJsiBindingsForRuntime:runtime];
+}
+
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wdeprecated-implementations"
+// Legacy single-argument hook. Deprecated in RN 0.83+, still required for
+// older RN versions where RCTTurboModuleManager only knows this selector.
+- (void)installJSIBindingsWithRuntime:(jsi::Runtime &)runtime
+{
+#if defined(RCT_NEW_ARCH_ENABLED) && RCT_NEW_ARCH_ENABLED
+    [self installJSIBindingsWithRuntime:runtime callInvoker:self.callInvoker.callInvoker];
+#else
+    RCTBridge *bridge = [RCTBridge currentBridge];
+    [self installJSIBindingsWithRuntime:runtime callInvoker:bridge.jsCallInvoker];
+#endif
+}
+#pragma clang diagnostic pop
+
+- (void)installJsiBindingsForRuntime:(jsi::Runtime &)runtime
+{
     [JsiBridgeEmitter.shared registerJsiBridge:self];
 
     auto registerCallback = jsi::Function::createFromHostFunction(
@@ -78,7 +97,7 @@ RCT_EXPORT_MODULE()
                                           const jsi::Value *args,
                                           size_t) -> jsi::Value {
             auto name = args[0].asString(runtime).utf8(runtime);
-            auto data = JsiBridgeTurboModuleConvertUtils::convertJSIValueToObjCObject(
+            id data = JsiBridgeTurboModuleConvertUtils::convertJSIValueToObjCObject(
                 runtime, args[1], jsInvoker);
             auto nameString = [NSString stringWithUTF8String:name.c_str()];
             [JsiBridgeEmitter.shared emitNative:nameString with:data];
@@ -101,8 +120,8 @@ RCT_EXPORT_BLOCKING_SYNCHRONOUS_METHOD(install)
         return @false;
     }
 
-    currentCallInvoker_ = bridge.jsCallInvoker;
-    [self installJSIBindingsWithRuntime:*((jsi::Runtime *)cxxBridge.runtime)];
+    [self installJSIBindingsWithRuntime:*((jsi::Runtime *)cxxBridge.runtime)
+                            callInvoker:bridge.jsCallInvoker];
     return @true;
 }
 #endif
@@ -117,6 +136,12 @@ RCT_EXPORT_BLOCKING_SYNCHRONOUS_METHOD(install)
 RCT_EXPORT_METHOD(getStatus:(RCTPromiseResolveBlock)resolve reject:(RCTPromiseRejectBlock)reject)
 {
     resolve(@"newarch");
+}
+
+- (void)install
+{
+    // JSI bindings are installed automatically via RCTTurboModuleWithJSIBindings
+    // when the TurboModule is created. Required by NativeJsiBridgeSpec, nothing to do.
 }
 #endif
 
