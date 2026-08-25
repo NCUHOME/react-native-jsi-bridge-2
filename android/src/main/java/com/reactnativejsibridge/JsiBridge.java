@@ -53,9 +53,12 @@ public class JsiBridge {
     }
 
     public boolean install(ReactApplicationContext context) {
+        if (mHybridData != null) {
+            return true;
+        }
         try {
             JavaScriptContextHolder jsContext = context.getJavaScriptContextHolder();
-            CallInvokerHolder jsCallInvokerHolder = context.getCatalystInstance().getJSCallInvokerHolder();
+            CallInvokerHolder jsCallInvokerHolder = context.getJSCallInvokerHolder();
             mHybridData = initHybrid(jsContext.get(), (CallInvokerHolderImpl) jsCallInvokerHolder);
             installJSIBindings();
             return true;

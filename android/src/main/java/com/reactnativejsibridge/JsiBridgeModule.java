@@ -33,10 +33,8 @@ public class JsiBridgeModule extends JsiBridgeSpec implements TurboModuleWithJSI
     }
     @ReactMethod(isBlockingSynchronousMethod = true)
     public void install() {
-        if (!BuildConfig.IS_NEW_ARCHITECTURE_ENABLED) {
-            System.loadLibrary("jsiBridge");
-            JsiBridge.instance.install(getReactApplicationContext());
-        }
+        System.loadLibrary("jsiBridge");
+        JsiBridge.instance.install(getReactApplicationContext());
     }
 
     @Override

@@ -8,12 +8,12 @@ export interface JsiBridgeGlobal {
 }
 
 declare global {
-  var __turboModuleProxy: object | undefined;
   var _JsiBridge: JsiBridgeGlobal | undefined;
 }
 
 export interface Spec extends TurboModule {
   getStatus(): Promise<string>;
+  install(): void;
 }
 
 export function initializeJsiBridge() {
